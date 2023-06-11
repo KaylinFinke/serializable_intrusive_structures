@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
+#include <cstdint>
+#include <cstring>
 #include <functional>
 #include <ranges>
 #include <span>
@@ -105,6 +107,7 @@ template <typename key_type>
 constexpr auto assert_valid_tree(std::ranges::contiguous_range auto nodes, std::same_as<std::ptrdiff_t> auto root) noexcept
 {
 	assert(red_black_tree::validate<tree_type>(nodes.begin(), nodes.end(), root, std::less<>{}));
+	assert(red_black_tree::validate<tree_type>(nodes, root, std::less<>{}));
 }
 
 template <typename iterator>
@@ -316,6 +319,7 @@ template <typename key_type>
 constexpr auto assert_valid_list(std::ranges::contiguous_range auto nodes, std::same_as<std::ptrdiff_t> auto head) noexcept
 {
 	assert(double_list::validate<list_type>(nodes.begin(), nodes.end(), head));
+	assert(double_list::validate<list_type>(nodes, head));
 }
 
 [[nodiscard]] constexpr auto assert_add_all_nodes_back(std::ranges::contiguous_range auto nodes, std::same_as<std::ptrdiff_t> auto head, std::same_as<std::ptrdiff_t> auto tail) noexcept
@@ -559,6 +563,7 @@ constexpr auto assert_list_size(std::ranges::contiguous_range auto nodes, std::s
 constexpr auto assert_valid_slist(std::ranges::contiguous_range auto nodes, std::same_as<std::ptrdiff_t> auto head) noexcept
 {
 	assert(single_list::validate<list_type>(nodes.begin(), nodes.end(), head));
+	assert(single_list::validate<list_type>(nodes, head));
 }
 
 template <typename iterator>
@@ -697,6 +702,284 @@ constexpr auto assert_slist_size(std::ranges::contiguous_range auto nodes, std::
 	return true;
 }
 
+struct node
+{
+	enum class left_type : std::uint8_t {} left;
+	enum class right_type : std::uint8_t {} right;
+	enum class parent_type : std::uint8_t {} parent;
+	enum class color_type : std::uint8_t {} color;
+	using key_type = std::u8string_view;
+	std::array<char8_t, 32> name;
+
+	template <std::same_as<key_type> T>
+	[[nodiscard]] constexpr auto get() const noexcept
+	{
+		return key_type(std::begin(name), std::find(std::begin(name), std::end(name), u8'\0'));
+	}
+	template <std::same_as<left_type> T>
+	[[nodiscard]] constexpr auto get() noexcept -> T&
+	{
+		return left;
+	}
+	template <std::same_as<left_type> T>
+	[[nodiscard]] constexpr auto get() const noexcept -> const T&
+	{
+		return left;
+	}
+	template <std::same_as<right_type> T>
+	[[nodiscard]] constexpr auto get() noexcept -> T&
+	{
+		return right;
+	}
+	template <std::same_as<right_type> T>
+	[[nodiscard]] constexpr auto get() const noexcept -> const T&
+	{
+		return right;
+	}
+	template <std::same_as<parent_type> T>
+	[[nodiscard]] constexpr auto get() noexcept -> T&
+	{
+		return parent;
+	}
+	template <std::same_as<parent_type> T>
+	[[nodiscard]] constexpr auto get() const noexcept -> const T&
+	{
+		return parent;
+	}
+	template <std::same_as<color_type> T>
+	[[nodiscard]] constexpr auto get() noexcept -> T&
+	{
+		return color;
+	}
+	template <std::same_as<color_type> T>
+	[[nodiscard]] constexpr auto get() const noexcept -> const T&
+	{
+		return color;
+	}
+};
+
+template <typename node_type, std::size_t max_size_>
+class multiset
+{
+	static_assert(max_size_ < 255);
+	enum class e1 : std::uint8_t {} root;
+	enum class e2 : std::uint8_t {} size_;
+	std::array<node_type, max_size_> data_;
+public:
+	using iterator = red_black_tree::forward_iter<node_type, typename decltype(std::span(std::declval<std::array<node_type, max_size_>&>()))::iterator>;
+	using const_iterator = red_black_tree::forward_iter<node_type, typename decltype(std::span(std::declval<const std::array<node_type, max_size_>&>()))::iterator>;
+	using reverse_iterator = red_black_tree::reverse_iter<node_type, typename decltype(std::span(std::declval<std::array<node_type, max_size_>&>()))::iterator>;
+	using reverse_const_iterator = red_black_tree::reverse_iter<node_type, typename decltype(std::span(std::declval<const std::array<node_type, max_size_>&>()))::iterator>;
+	using value_type = typename std::iterator_traits<iterator>::value_type;
+	using reference = typename std::iterator_traits<iterator>::reference;
+	using difference_type = typename std::iterator_traits<iterator>::difference_type;
+
+	using const_reference = typename std::iterator_traits<const_iterator>::reference;
+	using size_type = std::make_unsigned_t<difference_type>;
+
+	[[nodiscard]] constexpr auto end() noexcept
+	{
+		return red_black_tree::end<node_type>(std::span(data_).begin());
+	}
+	[[nodiscard]] constexpr auto end() const noexcept
+	{
+		return cend();
+	}
+	[[nodiscard]] constexpr auto cend() const noexcept
+	{
+		return red_black_tree::end<node_type>(std::span(data_).begin());
+	}
+
+	[[nodiscard]] constexpr auto begin() noexcept
+	{
+		return red_black_tree::begin<node_type>(std::span(data_).begin(), difference_type(root));
+	}
+	[[nodiscard]] constexpr auto begin() const noexcept
+	{
+		return cbegin();
+	}
+	[[nodiscard]] constexpr auto cbegin() const noexcept
+	{
+		return red_black_tree::begin<node_type>(std::span(data_).begin(), difference_type(root));
+	}
+
+	[[nodiscard]] constexpr auto rend() noexcept
+	{
+		return red_black_tree::rend<node_type>(std::span(data_).begin());
+	}
+	[[nodiscard]] constexpr auto rend() const noexcept
+	{
+		return crend();
+	}
+	[[nodiscard]] constexpr auto crend() const noexcept
+	{
+		return red_black_tree::rend<node_type>(std::span(data_).begin());
+	}
+
+	[[nodiscard]] constexpr auto rbegin() noexcept
+	{
+		return red_black_tree::rbegin<node_type>(std::span(data_).begin(), difference_type(root));
+	}
+	[[nodiscard]] constexpr auto rbegin() const noexcept
+	{
+		return crbegin();
+	}
+	[[nodiscard]] constexpr auto crbegin() const noexcept
+	{
+		return red_black_tree::rbegin<node_type>(std::span(data_).begin(), difference_type(root));
+	}
+
+	constexpr auto insert(std::u8string_view name) noexcept
+	{
+		auto base = std::span(data_).begin();
+		auto it = std::next(base, difference_type(size()));
+		std::fill(std::copy_n(name.begin(), name.size(), it->name.begin()), it->name.end(), u8'\0');
+		size_ = static_cast<decltype(size_)>(difference_type(size()) + 1);
+		root = static_cast<decltype(root)>(red_black_tree::insert<node_type>(base, difference_type(root), it, std::less<>{}));
+		return red_black_tree::make_iterator<node_type>(base, it);
+	}
+
+	constexpr auto erase(iterator pos) noexcept
+	{
+		auto base = std::span(data_).begin();
+		size_ = static_cast<decltype(size_)>(difference_type(size()) - 1);
+		auto it = red_black_tree::make_iterator<node_type>(base, std::next(base, difference_type(size())));
+		using std::swap;
+		swap(pos->name, it->name);
+		root = static_cast<decltype(root)>(red_black_tree::node_swap<node_type>(difference_type(root), pos, it));
+		root = static_cast<decltype(root)>(red_black_tree::erase<node_type>(difference_type(root), it++));
+		return it;
+	}
+
+	[[nodiscard]] constexpr auto find(std::u8string_view name) const noexcept
+	{
+		return red_black_tree::find<node_type>(std::span(data_).begin(), difference_type(root), name, std::less<>{});
+	}
+
+	[[nodiscard]] constexpr auto find(std::u8string_view name) noexcept
+	{
+		return red_black_tree::find<node_type>(std::span(data_).begin(), difference_type(root), name, std::less<>{});
+	}
+
+	[[nodiscard]] constexpr auto lower_bound(std::u8string_view name) const noexcept
+	{
+		return red_black_tree::lower_bound<node_type>(std::span(data_).begin(), difference_type(root), name, std::less<>{});
+	}
+
+	[[nodiscard]] constexpr auto lower_bound(std::u8string_view name) noexcept
+	{
+		return red_black_tree::lower_bound<node_type>(std::span(data_).begin(), difference_type(root), name, std::less<>{});
+	}
+
+	[[nodiscard]] constexpr auto upper_bound(std::u8string_view name) const noexcept
+	{
+		return red_black_tree::upper_bound<node_type>(std::span(data_).begin(), difference_type(root), name, std::less<>{});
+	}
+
+	[[nodiscard]] constexpr auto upper_bound(std::u8string_view name) noexcept
+	{
+		return red_black_tree::upper_bound<node_type>(std::span(data_).begin(), difference_type(root), name, std::less<>{});
+	}
+
+	[[nodiscard]] constexpr auto equal_range(std::u8string_view name) const noexcept
+	{
+		return red_black_tree::equal_range<node_type>(std::span(data_).begin(), difference_type(root), name, std::less<>{});
+	}
+
+	[[nodiscard]] constexpr auto equal_range(std::u8string_view name) noexcept
+	{
+		return red_black_tree::equal_range<node_type>(std::span(data_).begin(), difference_type(root), name, std::less<>{});
+	}
+
+	[[nodiscard]] constexpr auto operator==(const multiset& other) const noexcept
+	{
+		if (other.size() not_eq size())
+			return false;
+		auto base = std::span(data_).begin();
+		auto other_base = std::span(other.data_).begin();
+		return red_black_tree::equal<node_type>(base, difference_type(root), other_base, difference_type(other.root), std::equal_to<>{});
+	}
+	[[nodiscard]] constexpr auto operator!=(const multiset& other) const noexcept
+	{
+		if (other.size() not_eq size())
+			return true;
+		auto base = std::span(data_).begin();
+		auto other_base = std::span(other.data_).begin();
+		return red_black_tree::not_equal<node_type>(base, difference_type(root), other_base, difference_type(other.root), std::equal_to<>{});
+	}
+	[[nodiscard]] constexpr auto size() const noexcept
+	{
+		return size_type(size_);
+	}
+	[[nodiscard]] static constexpr auto max_size() noexcept
+	{
+		return size_type(max_size_);
+	}
+	[[nodiscard]] constexpr auto empty() const noexcept
+	{
+		return not size();
+	}
+
+	auto swap(multiset& other) noexcept
+	{
+		using std::swap;
+		swap(root, other.root);
+		swap(size_, other.size_);
+		swap(data_, other.data_);
+	}
+
+	[[nodiscard]] static auto start_lifetime(void* p) noexcept -> multiset*
+	{
+		auto t = std::launder(reinterpret_cast<multiset*>(std::memmove(p, p, sizeof(multiset))));
+		if (t->size() > t->max_size())
+			return nullptr;
+		if (std::ranges::any_of(std::span(t->data_).first(t->size()), [](const auto& v) { return v. template get<std::u8string_view>().size() >= v.name.size(); }))
+			return nullptr;
+		if (not red_black_tree::validate<node>(std::span(t->data_).first(t->size()), difference_type(t->root), std::less<>{}))
+			return nullptr;
+		return t->size() == size_type(red_black_tree::size<value_type>(std::span(t->data_).begin(), difference_type(t->root))) ? t : nullptr;
+	}
+};
+
+
+
+
+template <typename node_type, std::size_t max_size_>
+auto swap(multiset<node_type, max_size_>& a, multiset<node_type, max_size_>& b)
+{
+	a.swap(b);
+}
+
+constexpr auto fun() noexcept
+{
+	multiset<node, 254> t{};
+
+	using namespace std::string_view_literals;
+
+	std::array<std::u8string_view, 6> values{ u8"hello"sv, u8"world,"sv, u8"I'm"sv, u8"a"sv, u8"C++"sv, u8"program." };
+	
+	static_assert(std::is_standard_layout_v<decltype(t)>);
+	static_assert(std::is_trivial_v<decltype(t)>);
+
+	for (const auto& v : values)
+		t.insert(v);
+	std::ranges::sort(values);
+	for (auto v = std::span(values).begin(); const auto & s : t)
+		assert(*v++ == s.template get<std::u8string_view>());
+	assert(t.size() == 6);
+	assert(t.find(u8"hello") not_eq t.end());
+	assert(t.lower_bound(u8"C++"sv) == t.begin());
+	assert(t.upper_bound(u8"C++"sv) == std::next(t.begin()));
+	assert(t.equal_range(u8"C++"sv).first == t.begin());
+	assert(t.equal_range(u8"C++"sv).second == std::next(t.begin()));
+
+	auto t2 = t;
+	assert(t == t2);
+	for (auto it = t.begin(); it not_eq t.cend(); it = t.erase(it));
+	assert(t not_eq t2);
+	return t;
+}
+
 int main()
 {
 	static_assert(test_tree());
@@ -704,4 +987,15 @@ int main()
 	static_assert(test_list());
 
 	static_assert(test_slist());
+
+	[[maybe_unused]] static constexpr auto t = fun();
+
+	alignas(decltype(t)) std::byte s[sizeof(t)]{};
+
+	auto p = multiset<node, 254>::start_lifetime(s);
+	assert(p);
+	*reinterpret_cast<std::byte*>(p) = std::byte{255};
+
+	auto q = multiset<node, 254>::start_lifetime(p);
+	assert(not q);
 }
