@@ -9,67 +9,102 @@
 
 namespace intrusive {
 	namespace detail {
-		template <typename T, typename E>
-		concept std_get = requires(T t)
+		template <typename T, typename U>
+		concept std_get = requires(U& u)
 		{
-			requires std::same_as<decltype(std::get<std::remove_cvref_t<E>>(t)), E>;
+			requires std::same_as<decltype(std::get<T>(u)), T&>;
+		} and requires(U&& u)
+		{
+			requires std::same_as<decltype(std::get<T>(u)), T&&>;
+		} and requires(const U& u)
+		{
+			requires std::same_as<decltype(std::get<T>(u)), const T&>;
+		} and requires(const U&& u)
+		{
+			requires std::same_as<decltype(std::get<T>(u)), const T&&>;
 		};
 
-		template <typename T, typename E, typename U = std::remove_const_t<T>, typename V = std::remove_const_t<E>>
-		concept mem_get = requires(T t, U u, E e, V v)
+		template <typename T, typename U>
+		concept mem_get = requires(U& u, T t)
 		{
-			v = static_cast<std::remove_cvref_t<E>>(t.template get<std::remove_cvref_t<E>>());
-			u. template get<std::remove_cvref_t<E>>() = e;
+			T(u. template get<T>());
+			u. template get<T>() = t;
+		} and requires(U&& u, T t)
+		{
+			T(u. template get<T>());
+			u. template get<T>() = t;
+		} and requires(const U& u)
+		{
+			T(u. template get<T>());
+		} and requires(const U&& u)
+		{
+			T(u. template get<T>());
 		};
 
-		template <typename T, typename E, typename U = std::remove_const_t<T>, typename V = std::remove_const_t<E>>
-		concept usr_get = requires(T t, U u, E e, V v)
+		template <typename T, typename U>
+		concept usr_get = requires(U& u, T t)
 		{
-			v = static_cast<std::remove_cvref_t<E>>(get<std::remove_cvref_t<E>>(t));
-			get<std::remove_cvref_t<E>>(u) = e;
+			T(get<T>(u));
+			get<T>(u) = t;
+		} and requires(U&& u, T t)
+		{
+			T(get<T>(u));
+			get<T>(u) = t;
+		} and requires(const U& u)
+		{
+			T(get<T>(u));
+		} and requires(const U&& u)
+		{
+			T(get<T>(u));
 		};
 
-		template <typename T, typename E>
-		concept has_get = usr_get<T, E> or std_get<T, E> or mem_get<T, E>;
-
-		template <typename E, typename T, typename V>
-		[[nodiscard]] constexpr decltype(auto) dispatch(T t) noexcept
-		{
-			if constexpr (detail::mem_get<T, V>)
-				return t. template get<E>();
-			else if constexpr (detail::usr_get<T, V>)
-				return get<E>(t);
-			else
-				return std::get<E>(t);
-		}
+		template <typename T, typename U>
+		concept has_get = usr_get<T, U> or std_get<T, U> or mem_get<T, U>;
 	}
 
-	template <typename E, typename T>
-	requires detail::has_get<const T&, const E&>
-	[[nodiscard]] constexpr decltype(auto) _get(const T& t) noexcept
+	template <typename T, typename U>
+	requires detail::has_get<T, U>
+	[[nodiscard]] constexpr decltype(auto) _get(const U& u) noexcept
 	{
-		return detail::dispatch<E, const T&, const E&>(t);
+		if constexpr (detail::mem_get<T, U>)
+			return u. template get<T>();
+		else if constexpr (detail::usr_get<T, U>)
+			return get<T>(u);
+		else
+			return std::get<T>(u);
 	}
-
-	template <typename E, typename T>
-	requires detail::has_get<const T&&, const E&&>
-	[[nodiscard]] constexpr decltype(auto) _get(const T&& t) noexcept
+	template <typename T, typename U>
+	requires detail::has_get<T, U>
+	[[nodiscard]] constexpr decltype(auto) _get(const U&& u) noexcept
 	{
-		return detail::dispatch<E, const T&&, const E&&>(t);
+		if constexpr (detail::mem_get<T, U>)
+			return u. template get<T>();
+		else if constexpr (detail::usr_get<T, U>)
+			return get<T>(u);
+		else
+			return std::get<T>(u);
 	}
-
-	template <typename E, typename T>
-	requires detail::has_get<T&, E&>
-	[[nodiscard]] constexpr decltype(auto) _get(T& t) noexcept
+	template <typename T, typename U>
+	requires detail::has_get<T, U>
+	[[nodiscard]] constexpr decltype(auto) _get(U& u) noexcept
 	{
-		return detail::dispatch<E, T&, E&>(t);
+		if constexpr (detail::mem_get<T, U>)
+			return u. template get<T>();
+		else if constexpr (detail::usr_get<T, U>)
+			return get<T>(u);
+		else
+			return std::get<T>(u);
 	}
-
-	template <typename E, typename T>
-	requires detail::has_get<T&&, E&&>
-	[[nodiscard]] constexpr decltype(auto) _get(T&& t) noexcept
+	template <typename T, typename U>
+	requires detail::has_get<T, U>
+	[[nodiscard]] constexpr decltype(auto) _get(U&& u) noexcept
 	{
-		return detail::dispatch<E, T&&, E&&>(t);
+		if constexpr (detail::mem_get<T, U>)
+			return u. template get<T>();
+		else if constexpr (detail::usr_get<T, U>)
+			return get<T>(u);
+		else
+			return std::get<T>(u);
 	}
 }
 

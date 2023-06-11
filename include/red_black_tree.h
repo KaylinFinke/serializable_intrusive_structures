@@ -23,10 +23,10 @@ namespace red_black_tree {
 			using difference_type = typename std::iterator_traits<base_type>::difference_type;
 
 			difference_type root;
-			[[nodiscard]] constexpr decltype(auto) left() const noexcept { return red_black_tree_node{ base, difference_type(left_type(intrusive::_get<left_type>(base[root - 1]))) }; }
-			[[nodiscard]] constexpr decltype(auto) right() const noexcept { return red_black_tree_node{ base, difference_type(right_type(intrusive::_get<right_type>(base[root - 1]))) }; }
-			[[nodiscard]] constexpr decltype(auto) parent() const noexcept { return red_black_tree_node{ base, difference_type(parent_type(intrusive::_get<parent_type>(base[root - 1]))) }; }
-			[[nodiscard]] constexpr decltype(auto) color() const noexcept { return root ? static_cast<enum color>(color_type(intrusive::_get<color_type>(base[root - 1]))) : color::black; }
+			[[nodiscard]] constexpr auto left() const noexcept { return red_black_tree_node{ base, difference_type(left_type(intrusive::_get<left_type>(base[root - 1]))) }; }
+			[[nodiscard]] constexpr auto right() const noexcept { return red_black_tree_node{ base, difference_type(right_type(intrusive::_get<right_type>(base[root - 1]))) }; }
+			[[nodiscard]] constexpr auto parent() const noexcept { return red_black_tree_node{ base, difference_type(parent_type(intrusive::_get<parent_type>(base[root - 1]))) }; }
+			[[nodiscard]] constexpr auto color() const noexcept { return root ? detail::color(color_type(intrusive::_get<color_type>(base[root - 1]))) : color::black; }
 
 			constexpr auto left(const red_black_tree_node& left) const noexcept { intrusive::_get<left_type>(base[root - 1]) = left_type(left.root); }
 			constexpr auto right(const red_black_tree_node& right) const noexcept { intrusive::_get<right_type>(base[root - 1]) = right_type(right.root); }
@@ -507,8 +507,10 @@ namespace red_black_tree {
 		[[nodiscard]] constexpr auto operator->() const noexcept { return base + (root - 1); }
 		[[nodiscard]] constexpr decltype(auto) operator*() noexcept { return base[root - 1]; }
 		[[nodiscard]] constexpr auto operator->() noexcept { return base + (root - 1); }
-		[[nodiscard]] constexpr auto operator==(const forward_iter& other) const noexcept { return root == other.root; }
-		[[nodiscard]] constexpr auto operator!=(const forward_iter& other) const noexcept { return root not_eq other.root; }
+		template <typename other_base>
+		[[nodiscard]] constexpr auto operator==(const forward_iter<tree_type, other_base>& other) const noexcept { return root == other.root; }
+		template <typename other_base>
+		[[nodiscard]] constexpr auto operator!=(const forward_iter<tree_type, other_base>& other) const noexcept { return root not_eq other.root; }
 	};
 
 	/* Implements reverse iterator. This is the mirror of the forward iterator class with all the same guarentees.
@@ -540,8 +542,10 @@ namespace red_black_tree {
 		[[nodiscard]] constexpr auto operator->() const noexcept { return base + (root - 1); }
 		[[nodiscard]] constexpr decltype(auto) operator*() noexcept { return base[root - 1]; }
 		[[nodiscard]] constexpr auto operator->() noexcept { return base + (root - 1); }
-		[[nodiscard]] constexpr auto operator==(const reverse_iter& other) const noexcept { return root == other.root; }
-		[[nodiscard]] constexpr auto operator!=(const reverse_iter& other) const noexcept { return root not_eq other.root; }
+		template <typename other_base>
+		[[nodiscard]] constexpr auto operator==(const reverse_iter<tree_type, other_base>& other) const noexcept { return root == other.root; }
+		template <typename other_base>
+		[[nodiscard]] constexpr auto operator!=(const reverse_iter<tree_type, other_base>& other) const noexcept { return root not_eq other.root; }
 	};
 
 	template <typename tree_type, std::random_access_iterator base_type>
@@ -589,7 +593,7 @@ namespace red_black_tree {
 	}
 
 	/* Inserts an object pointed to by it into the structure rooted at root in the random access range at base. returns the new root.
-	 * There's no uniqueness guarentee; if you wish the tree to contain unique elements, check before inserting an elemenet.
+	 * There's no uniqueness guarantee; if you wish the tree to contain unique elements, check before inserting an element.
 	*/
 	template <typename tree_type, std::random_access_iterator base_type, typename less_type>
 	[[nodiscard]] constexpr auto insert(base_type base, typename std::iterator_traits<base_type>::difference_type root, base_type it, less_type less) noexcept
@@ -698,6 +702,13 @@ namespace red_black_tree {
 	{
 		using node_type = detail::red_black_tree_node<tree_type, base_type>;
 		return detail::do_validate(node_type{ first, root }, std::distance(first, last), less);
+	}
+
+	template <typename tree_type, std::ranges::random_access_range rng, typename less_type>
+	[[nodiscard]] constexpr auto validate(rng r, typename std::iterator_traits<std::ranges::iterator_t<rng>>::difference_type root, less_type less) noexcept
+	{
+		using node_type = detail::red_black_tree_node<tree_type, std::ranges::iterator_t<rng>>;
+		return detail::do_validate(node_type{ std::begin(r), root }, std::distance(std::begin(r), std::end(r)), less);
 	}
 }
 

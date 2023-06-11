@@ -16,7 +16,7 @@ namespace single_list {
 			using difference_type = typename std::iterator_traits<base_type>::difference_type;
 
 			difference_type link;
-			[[nodiscard]] constexpr decltype(auto) next() const noexcept { return single_list_node{ base, difference_type(next_type(intrusive::_get<next_type>(base[link - 1]))) }; }
+			[[nodiscard]] constexpr auto next() const noexcept { return single_list_node{ base, difference_type(next_type(intrusive::_get<next_type>(base[link - 1]))) }; }
 
 			constexpr auto next(const single_list_node& next) const noexcept { intrusive::_get<next_type>(base[link - 1]) = next_type(next.link); }
 
@@ -140,8 +140,10 @@ namespace single_list {
 		[[nodiscard]] constexpr auto operator->() const noexcept { return base + (link - 1); }
 		[[nodiscard]] constexpr decltype(auto) operator*() noexcept { return base[link - 1]; }
 		[[nodiscard]] constexpr auto operator->() noexcept { return base + (link - 1); }
-		[[nodiscard]] constexpr auto operator==(const forward_iter& other) const noexcept { return link == other.link; }
-		[[nodiscard]] constexpr auto operator!=(const forward_iter& other) const noexcept { return link not_eq other.link; }
+		template <typename other_base>
+		[[nodiscard]] constexpr auto operator==(const forward_iter<list_type, other_base>& other) const noexcept { return link == other.link; }
+		template <typename other_base>
+		[[nodiscard]] constexpr auto operator!=(const forward_iter<list_type, other_base>& other) const noexcept { return link not_eq other.link; }
 	};
 
 	template <typename list_type, std::random_access_iterator base_type>
@@ -185,7 +187,6 @@ namespace single_list {
 	template <typename list_type, std::random_access_iterator base_type>
 	constexpr auto erase_after(forward_iter<list_type, base_type> it) noexcept
 	{
-		using difference_type = std::iterator_traits<base_type>::difference_type;
 		using node_type = detail::single_list_node<list_type, base_type>;
 		detail::do_erase_after(node_type{ it.base, it.link });
 	}
@@ -238,6 +239,13 @@ namespace single_list {
 	{
 		using node_type = detail::single_list_node<list_type, base_type>;
 		return detail::do_validate(node_type{ first, head }, std::distance(first, last));
+	}
+
+	template <typename list_type, std::ranges::random_access_range rng>
+	[[nodiscard]] constexpr auto validate(rng r, typename std::iterator_traits<std::ranges::iterator_t<rng>>::difference_type head) noexcept
+	{
+		using node_type = detail::single_list_node<list_type, std::ranges::iterator_t<rng>>;
+		return detail::do_validate(node_type{ std::begin(r), head }, std::distance(std::begin(r), std::end(r)));
 	}
 }
 
