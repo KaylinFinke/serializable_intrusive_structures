@@ -6,7 +6,26 @@ One approach to solving some of these issues, where they are issues, is using in
 
  This library intends to solve serializing data structures by implementing algorithms for a few common structures like balanced binary search trees and linked lists using a straightforward index-based approach. Instead of representing organized data using an object, these methods operate on a logical range similar to std::make_heap or std::sort but unlike these algorithms they can manipulate objects without moving them by assigning each element a persistent index within the range shifting the indirection from pointer indirection to pointer arithmetic. As a side effect of the relationship between objects being represented using indices, data organized this way can be trivially serialized to persistent storage or across the network. This makes such a representation ideal for sharing small to medium sized sets between machines or across the compile time boundary without requiring a deserialization step to be able to use and manipulate it at runtime. It also means such relationships can be embedded into existing structures like vectors without worrying about vector resizing or needing to separately track elements from indices.
 
-Because algorithms in this library do not themselves allocate memory and merely operate on a range of existing objects, all provided methods are constexpr. They are designed to work with objects that provide a type-based get template for the left, right, parent, and color type, and a get template for the key type, which must all be unique. The returned type must be able to be assigned the templated type, and convertable to the template type. left, right, and parent must be able to be (explicitly) converted to std::ptrdiff_t while color must be (explicitly) convertible to bool.
+Because algorithms in this library do not themselves allocate memory and merely operate on a range of existing objects, all provided methods are constexpr. They are designed to work with objects that provide a type-based get template for bookkeeping fields in the logical structure which might be index links, a color property, or a key depending on the method and structure type. The returned type from get must be able to be assigned the templated type, and convertible to the template type. Link types must be able to be (explicitly) convertible to ptrdiff_t while color annotations must be able to be explicitly convertible to an enum class of underlying type bool. If get<key_type> for tree does not return a, perhaps, const volatile qualified value or reference to key_type, it must be explicitly convertible to key_type.
+
+Some suggested use cases are:
+
+Serializing a map or list of portably laid out types to disk or across the network.
+
+Manipulating a map or list inside a vector/array using 'swap and pop' to keep nodes contiguous. Index based allows resizing the vector and can save space on links.
 
 
+Manipulating a map or list inside a vector/array using a second 'free list' with the same links. Additional bookkeeping fields could allow iterating over the entire range out of order, skipping free elements.
+
+Manipulating a map or list embedded in a std::array of compile time initial known elements at compile time and continuing to do so at runtime.
+
+Using indexes from one structure to create "array based" logical structures allowing SIMD operations on contiguous data out of order from the actual list or map.
+
+Building actual objects that implement the above concepts.
+
+Building a semi-intrusive hash_set/map using the supplied primitives and a hash function.
+
+Building hybrid data structures using the intrusive properties of this library. For example, a threaded binary search tree could be constructed from a double_list and a red_black_tree, or a map that implements multiple parallel views over the same elements from multiple red_black_trees.
+
+tests.cpp implements a simple container-like interface on top of std::array to illustrate a very simple use case. Consider using this library with classes that implement logical indices using a fixed memory layout to increase portability when building your own types.
 
